@@ -1,0 +1,1555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Smart Daily Expense Tracker</title>
+    
+    <!-- Google Fonts: Inter for clean, modern fintech typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Chart.js via CDN for clean financial visualizations -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Font Awesome for crisp UI & category icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Custom subtle scrollbar and AI shimmer animation */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        @keyframes pulseGlow {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.25); }
+            50% { box-shadow: 0 0 0 8px rgba(99, 102, 241, 0); }
+        }
+        .ai-glow {
+            animation: pulseGlow 2.5s infinite;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen flex flex-col">
+
+    <!-- Top Navigation Bar -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2">
+            <!-- Brand Logo & Title -->
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 flex items-center justify-center text-white shadow-sm">
+                    <i class="fa-solid fa-wallet text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="text-base sm:text-lg font-bold text-slate-900 leading-tight flex items-center gap-2">
+                        AI Smart Daily Expense Tracker
+                        <span class="hidden md:inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-100">
+                            <i class="fa-solid fa-sparkles mr-1 text-[10px]"></i> Smart FinTech
+                        </span>
+                    </h1>
+                    <p class="text-xs text-slate-500 hidden sm:block">Track daily cashflow & get intelligent saving insights</p>
+                </div>
+            </div>
+
+            <!-- Action Controls: Currency Selector & Demo Tools -->
+            <div class="flex items-center gap-2 sm:gap-3">
+                <!-- Currency Switcher -->
+                <div class="relative">
+                    <select id="currencySelector" aria-label="Select Currency"
+                        class="bg-slate-100 hover:bg-slate-200/70 text-slate-700 text-xs sm:text-sm font-medium rounded-xl px-3 py-2 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition cursor-pointer">
+                        <option value="₹">₹ INR</option>
+                        <option value="$">$ USD</option>
+                        <option value="€">€ EUR</option>
+                        <option value="£">£ GBP</option>
+                    </select>
+                </div>
+
+                <!-- Load Sample Data Button -->
+                <button id="loadSampleBtn" type="button"
+                    class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 transition cursor-pointer"
+                    title="Populate realistic sample data to test charts and AI coach">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                    <span class="hidden sm:inline">Sample Data</span>
+                </button>
+
+                <!-- Clear All Button -->
+                <button id="clearAllBtn" type="button"
+                    class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-medium text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-100 transition cursor-pointer"
+                    title="Reset all stored transactions">
+                    <i class="fa-solid fa-trash-can"></i>
+                    <span class="hidden sm:inline">Clear</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Notification Toast Banner (Replaces native alert/confirm) -->
+    <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4 sm:px-0"></div>
+
+    <!-- Custom Confirmation Modal (Replaces native confirm) -->
+    <div id="confirmModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-100 animate-fade-in">
+            <div class="flex items-center gap-3 mb-3">
+                <div class="w-10 h-10 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                </div>
+                <h3 id="confirmModalTitle" class="text-lg font-semibold text-slate-900">Confirm Action</h3>
+            </div>
+            <p id="confirmModalMessage" class="text-sm text-slate-600 mb-6 leading-relaxed">
+                Are you sure you want to proceed? This action cannot be undone.
+            </p>
+            <div class="flex justify-end gap-3">
+                <button id="confirmCancelBtn" type="button"
+                    class="px-4 py-2 rounded-xl text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 transition cursor-pointer">
+                    Cancel
+                </button>
+                <button id="confirmProceedBtn" type="button"
+                    class="px-4 py-2 rounded-xl text-sm font-medium text-white bg-rose-600 hover:bg-rose-700 shadow-xs transition cursor-pointer">
+                    Yes, Confirm
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Dashboard Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
+
+        <!-- Section 1: Top Summary Cards (Balance, Income, Expenses, Daily & Monthly Snapshot) -->
+        <section aria-label="Financial Overview" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+            <!-- Remaining Balance Card -->
+            <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs hover:shadow-md transition">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">Remaining Balance</span>
+                    <div class="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                        <i class="fa-solid fa-scale-balanced"></i>
+                    </div>
+                </div>
+                <div id="totalBalance" class="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">₹0.00</div>
+                <p id="savingsRateBadge" class="text-xs text-slate-500 mt-2 flex items-center gap-1">
+                    <span class="inline-block w-2 h-2 rounded-full bg-indigo-500"></span>
+                    <span>Net available funds</span>
+                </p>
+            </div>
+
+            <!-- Total Income Card -->
+            <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs hover:shadow-md transition">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">Total Income</span>
+                    <div class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                        <i class="fa-solid fa-arrow-trend-up"></i>
+                    </div>
+                </div>
+                <div id="totalIncome" class="text-2xl sm:text-3xl font-bold text-emerald-600 tracking-tight">₹0.00</div>
+                <p id="incomeCountText" class="text-xs text-slate-500 mt-2">0 income entries recorded</p>
+            </div>
+
+            <!-- Total Expenses Card -->
+            <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs hover:shadow-md transition">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">Total Expenses</span>
+                    <div class="w-9 h-9 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
+                        <i class="fa-solid fa-arrow-trend-down"></i>
+                    </div>
+                </div>
+                <div id="totalExpenses" class="text-2xl sm:text-3xl font-bold text-rose-600 tracking-tight">₹0.00</div>
+                <p id="expenseCountText" class="text-xs text-slate-500 mt-2">0 expense entries recorded</p>
+            </div>
+
+            <!-- Daily & Monthly Quick Summary Card -->
+            <div class="bg-gradient-to-br from-slate-800 to-slate-900 text-white rounded-2xl p-5 shadow-xs hover:shadow-md transition flex flex-col justify-between">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-slate-300">Spending Pulse</span>
+                    <span class="text-[11px] bg-white/10 px-2 py-0.5 rounded-full text-slate-200" id="currentMonthLabel">This Month</span>
+                </div>
+                <div class="space-y-2 my-1">
+                    <div class="flex items-center justify-between text-sm">
+                        <span class="text-slate-300 flex items-center gap-1.5">
+                            <i class="fa-regular fa-calendar-check text-amber-400"></i> Today's Spend
+                        </span>
+                        <span id="todayExpenseSummary" class="font-bold text-amber-300">₹0.00</span>
+                    </div>
+                    <div class="border-t border-white/10"></div>
+                    <div class="flex items-center justify-between text-sm">
+                        <span class="text-slate-300 flex items-center gap-1.5">
+                            <i class="fa-regular fa-calendar text-sky-400"></i> Monthly Spend
+                        </span>
+                        <span id="monthlyExpenseSummary" class="font-bold text-sky-300">₹0.00</span>
+                    </div>
+                </div>
+                <p id="dailyAvgText" class="text-[11px] text-slate-400 mt-1">Daily avg this month: ₹0.00</p>
+            </div>
+        </section>
+
+        <!-- Section 2: AI Financial Coach Panel -->
+        <section aria-label="AI Financial Coach" class="bg-gradient-to-r from-indigo-50 via-violet-50 to-purple-50 rounded-2xl p-5 sm:p-6 border border-indigo-100 shadow-xs">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+                <div class="flex items-start sm:items-center gap-3.5">
+                    <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 text-white flex items-center justify-center shrink-0 shadow-sm ai-glow">
+                        <i class="fa-solid fa-robot text-lg"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <h2 class="text-base sm:text-lg font-bold text-slate-900">AI Financial Coach & Smart Insights</h2>
+                            <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-white text-indigo-700 border border-indigo-200 shadow-2xs">
+                                Real-Time Analysis
+                            </span>
+                        </div>
+                        <p class="text-xs sm:text-sm text-slate-600 mt-0.5">
+                            Personalized spending patterns, budget alerts, and actionable money-saving tips generated from your ledger.
+                        </p>
+                    </div>
+                </div>
+
+                <button id="refreshAiBtn" type="button"
+                    class="self-start md:self-auto inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] shadow-xs transition cursor-pointer shrink-0">
+                    <i class="fa-solid fa-wand-sparkles"></i>
+                    <span>Analyze My Spending</span>
+                </button>
+            </div>
+
+            <!-- AI Insights Output Cards -->
+            <div id="aiInsightsContainer" class="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+                <!-- Populated dynamically via JavaScript -->
+            </div>
+        </section>
+
+        <!-- Section 3: Main Workspace (Left: Add/Edit Form, Right: Charts & Summaries) -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            
+            <!-- Left Column (4 cols): Add / Edit Transaction Form -->
+            <section class="lg:col-span-4 bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/80 shadow-xs">
+                <div class="flex items-center justify-between mb-5">
+                    <h2 id="formHeading" class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                        <i class="fa-solid fa-circle-plus text-indigo-600"></i>
+                        <span>Add Transaction</span>
+                    </h2>
+                    <button id="cancelEditBtn" type="button"
+                        class="hidden text-xs font-medium text-slate-500 hover:text-slate-800 bg-slate-100 px-2.5 py-1 rounded-lg transition cursor-pointer">
+                        Cancel Edit
+                    </button>
+                </div>
+
+                <form id="transactionForm" class="space-y-4">
+                    <!-- Hidden field to track ID when editing -->
+                    <input type="hidden" id="editTransactionId" value="">
+
+                    <!-- Transaction Type Toggle (Expense vs Income) -->
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Transaction Type</label>
+                        <div class="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-xl">
+                            <label class="cursor-pointer">
+                                <input type="radio" name="txType" value="expense" class="peer sr-only" checked>
+                                <div class="text-center py-2 px-3 rounded-lg text-sm font-semibold text-slate-600 peer-checked:bg-white peer-checked:text-rose-600 peer-checked:shadow-2xs transition flex items-center justify-center gap-1.5">
+                                    <i class="fa-solid fa-minus-circle"></i> Expense
+                                </div>
+                            </label>
+                            <label class="cursor-pointer">
+                                <input type="radio" name="txType" value="income" class="peer sr-only">
+                                <div class="text-center py-2 px-3 rounded-lg text-sm font-semibold text-slate-600 peer-checked:bg-white peer-checked:text-emerald-600 peer-checked:shadow-2xs transition flex items-center justify-center gap-1.5">
+                                    <i class="fa-solid fa-plus-circle"></i> Income
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Title / Description -->
+                    <div>
+                        <label for="txTitle" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">
+                            Title / Description
+                        </label>
+                        <input type="text" id="txTitle" required maxlength="60"
+                            placeholder="e.g., Grocery Shopping, Metro Card, Freelance..."
+                            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition">
+                    </div>
+
+                    <!-- Amount & Date Row -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-3">
+                        <div>
+                            <label for="txAmount" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">
+                                Amount (<span id="formCurrencySymbol">₹</span>)
+                            </label>
+                            <input type="number" id="txAmount" required min="0.01" step="0.01"
+                                placeholder="0.00"
+                                class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition">
+                        </div>
+
+                        <div>
+                            <label for="txDate" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">
+                                Date
+                            </label>
+                            <input type="date" id="txDate" required
+                                class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition">
+                        </div>
+                    </div>
+
+                    <!-- Category Dropdown -->
+                    <div>
+                        <label for="txCategory" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">
+                            Category
+                        </label>
+                        <select id="txCategory" required
+                            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition cursor-pointer">
+                            <!-- Options dynamically synced based on Expense vs Income -->
+                        </select>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <button type="submit" id="submitTxBtn"
+                        class="w-full py-3 px-4 rounded-xl text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] shadow-xs transition flex items-center justify-center gap-2 cursor-pointer mt-2">
+                        <i class="fa-solid fa-check"></i>
+                        <span id="submitBtnText">Save Transaction</span>
+                    </button>
+                </form>
+            </section>
+
+            <!-- Right Column (8 cols): Interactive Charts & Visual Analytics -->
+            <section class="lg:col-span-8 space-y-6">
+                <!-- Charts Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Chart 1: Expense Breakdown by Category -->
+                    <div class="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/80 shadow-xs flex flex-col">
+                        <div class="flex items-center justify-between mb-4">
+                            <div>
+                                <h3 class="text-base font-bold text-slate-900">Expense Categories</h3>
+                                <p class="text-xs text-slate-500">Where your money goes</p>
+                            </div>
+                            <span class="w-8 h-8 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center text-sm">
+                                <i class="fa-solid fa-chart-pie"></i>
+                            </span>
+                        </div>
+                        <div class="relative h-60 w-full flex items-center justify-center">
+                            <canvas id="categoryChart"></canvas>
+                            <div id="emptyCategoryChartMsg" class="hidden absolute inset-0 flex flex-col items-center justify-center text-center p-4">
+                                <i class="fa-regular fa-folder-open text-2xl text-slate-300 mb-2"></i>
+                                <p class="text-xs text-slate-400">Add an expense to view category breakdown</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Chart 2: Daily Spending Trend (Last 7 Active Days) -->
+                    <div class="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/80 shadow-xs flex flex-col">
+                        <div class="flex items-center justify-between mb-4">
+                            <div>
+                                <h3 class="text-base font-bold text-slate-900">Daily Cashflow Trend</h3>
+                                <p class="text-xs text-slate-500">Recent daily income vs. expenses</p>
+                            </div>
+                            <span class="w-8 h-8 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center text-sm">
+                                <i class="fa-solid fa-chart-column"></i>
+                            </span>
+                        </div>
+                        <div class="relative h-60 w-full flex items-center justify-center">
+                            <canvas id="trendChart"></canvas>
+                            <div id="emptyTrendChartMsg" class="hidden absolute inset-0 flex flex-col items-center justify-center text-center p-4">
+                                <i class="fa-solid fa-chart-simple text-2xl text-slate-300 mb-2"></i>
+                                <p class="text-xs text-slate-400">Record transactions to see daily trends</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Category Breakdown Progress Pills -->
+                <div class="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/80 shadow-xs">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+                        <div>
+                            <h3 class="text-base font-bold text-slate-900">Category Spending Breakdown</h3>
+                            <p class="text-xs text-slate-500">Share of total expenses across categories</p>
+                        </div>
+                        <span id="topCategoryBadge" class="text-xs font-medium px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 self-start sm:self-auto">
+                            No expenses yet
+                        </span>
+                    </div>
+                    <div id="categoryBarsContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                        <!-- Dynamically rendered category mini-cards -->
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Section 4: Transaction History & Filtering -->
+        <section aria-label="Transaction History" class="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/80 shadow-xs">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5">
+                <div>
+                    <h2 class="text-lg font-bold text-slate-900">Transaction History</h2>
+                    <p class="text-xs text-slate-500">View, filter, edit, or delete your daily financial records</p>
+                </div>
+
+                <!-- Filter Controls -->
+                <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+                    <!-- Time Period Filter Tabs -->
+                    <div class="inline-flex bg-slate-100 p-1 rounded-xl text-xs font-medium" role="group" aria-label="Timeframe Filter">
+                        <button type="button" data-timeframe="all" class="timeframe-btn px-3 py-1.5 rounded-lg bg-white text-slate-900 shadow-2xs transition cursor-pointer">
+                            All Time
+                        </button>
+                        <button type="button" data-timeframe="month" class="timeframe-btn px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition cursor-pointer">
+                            This Month
+                        </button>
+                        <button type="button" data-timeframe="today" class="timeframe-btn px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition cursor-pointer">
+                            Today
+                        </button>
+                    </div>
+
+                    <!-- Category Filter -->
+                    <select id="filterCategory" aria-label="Filter by Category"
+                        class="bg-slate-50 border border-slate-200 text-slate-700 text-xs font-medium rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
+                        <option value="all">All Categories</option>
+                        <option value="Food">🍔 Food</option>
+                        <option value="Travel">🚕 Travel</option>
+                        <option value="Shopping">🛍️ Shopping</option>
+                        <option value="Bills">🧾 Bills</option>
+                        <option value="Salary">💼 Salary</option>
+                        <option value="Freelance">💻 Freelance</option>
+                        <option value="Others">📦 Others</option>
+                    </select>
+
+                    <!-- Search Input -->
+                    <div class="relative flex-1 sm:flex-initial">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                        <input type="text" id="searchInput" placeholder="Search title..."
+                            class="w-full sm:w-44 pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filtered Summary Strip -->
+            <div class="bg-slate-50 rounded-xl px-4 py-2.5 mb-4 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600 border border-slate-100">
+                <span id="filteredCountLabel">Showing 0 transactions</span>
+                <div class="flex items-center gap-4">
+                    <span>Filtered Income: <strong id="filteredIncomeTotal" class="text-emerald-600">₹0.00</strong></span>
+                    <span>Filtered Expense: <strong id="filteredExpenseTotal" class="text-rose-600">₹0.00</strong></span>
+                </div>
+            </div>
+
+            <!-- Responsive Table / List Wrapper -->
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="border-b border-slate-200 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                            <th class="py-3 px-3">Date</th>
+                            <th class="py-3 px-3">Description</th>
+                            <th class="py-3 px-3">Category</th>
+                            <th class="py-3 px-3 text-right">Amount</th>
+                            <th class="py-3 px-3 text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="transactionTableBody" class="divide-y divide-slate-100 text-sm">
+                        <!-- Dynamically rendered rows -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Empty State when no transactions match -->
+            <div id="emptyTransactionsState" class="hidden py-12 text-center">
+                <div class="w-14 h-14 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-3 text-xl">
+                    <i class="fa-solid fa-receipt"></i>
+                </div>
+                <h3 class="text-sm font-semibold text-slate-800">No transactions found</h3>
+                <p class="text-xs text-slate-500 mt-1 max-w-xs mx-auto">
+                    Add a new income or expense using the form above, or click "Sample Data" in the top bar to try a demo.
+                </p>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 mt-auto py-4">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
+            <p><strong>AI Smart Daily Expense Tracker</strong> &bull; Personal Finance Dashboard</p>
+            <p>Data stored securely in your browser's <code class="bg-slate-100 px-1.5 py-0.5 rounded text-slate-700">localStorage</code></p>
+        </div>
+    </footer>
+
+    <!-- Application JavaScript -->
+    <script>
+        /**
+         * ============================================================================
+         * AI SMART DAILY EXPENSE TRACKER - CORE APPLICATION LOGIC
+         * ============================================================================
+         * Architecture:
+         * 1. State Management & LocalStorage Persistence
+         * 2. Category Metadata & Currency Formatting Utilities
+         * 3. Transaction CRUD Operations (Create, Read, Update, Delete)
+         * 4. Financial Calculations (Daily, Monthly, All-Time Summaries)
+         * 5. Interactive Chart.js Visualizations (Doughnut & Bar Charts)
+         * 6. AI Financial Coach Heuristic Engine (Smart Analysis & Tips)
+         */
+
+        // --- 1. STATE & CONSTANTS ---
+        const STORAGE_KEY = 'ai_smart_expense_tracker_v1';
+        const CURRENCY_KEY = 'ai_smart_expense_currency_v1';
+
+        let transactions = [];
+        let currencySymbol = '₹';
+        let activeTimeframe = 'all'; // 'all' | 'month' | 'today'
+        let categoryChartInstance = null;
+        let trendChartInstance = null;
+
+        // Category definitions with colors and FontAwesome icons
+        const EXPENSE_CATEGORIES = {
+            Food:     { icon: 'fa-utensils',      color: '#f97316', bg: 'bg-orange-50', text: 'text-orange-600', border: 'border-orange-200' },
+            Travel:   { icon: 'fa-car-side',      color: '#0ea5e9', bg: 'bg-sky-50',    text: 'text-sky-600',    border: 'border-sky-200' },
+            Shopping: { icon: 'fa-bag-shopping',  color: '#ec4899', bg: 'bg-pink-50',   text: 'text-pink-600',   border: 'border-pink-200' },
+            Bills:    { icon: 'fa-file-invoice',  color: '#8b5cf6', bg: 'bg-violet-50', text: 'text-violet-600', border: 'border-violet-200' },
+            Others:   { icon: 'fa-box-open',      color: '#64748b', bg: 'bg-slate-100', text: 'text-slate-600',  border: 'border-slate-200' }
+        };
+
+        const INCOME_CATEGORIES = {
+            Salary:    { icon: 'fa-briefcase',       color: '#10b981', bg: 'bg-emerald-50', text: 'text-emerald-600', border: 'border-emerald-200' },
+            Freelance: { icon: 'fa-laptop-code',     color: '#14b8a6', bg: 'bg-teal-50',    text: 'text-teal-600',    border: 'border-teal-200' },
+            Others:    { icon: 'fa-sack-dollar',     color: '#22c55e', bg: 'bg-green-50',   text: 'text-green-600',   border: 'border-green-200' }
+        };
+
+        // --- 2. INITIALIZATION ---
+        document.addEventListener('DOMContentLoaded', () => {
+            loadFromLocalStorage();
+            setDefaultDateToToday();
+            syncCategoryDropdown('expense');
+            setupEventListeners();
+            refreshDashboard();
+        });
+
+        /**
+         * Returns today's date in YYYY-MM-DD format adjusted for local timezone
+         */
+        function getTodayISO() {
+            const now = new Date();
+            const offset = now.getTimezoneOffset();
+            const localDate = new Date(now.getTime() - (offset * 60 * 1000));
+            return localDate.toISOString().split('T')[0];
+        }
+
+        function setDefaultDateToToday() {
+            const dateInput = document.getElementById('txDate');
+            if (dateInput) {
+                dateInput.value = getTodayISO();
+            }
+        }
+
+        /**
+         * Loads saved transactions and currency preference from LocalStorage
+         */
+        function loadFromLocalStorage() {
+            try {
+                const savedData = localStorage.getItem(STORAGE_KEY);
+                const savedCurrency = localStorage.getItem(CURRENCY_KEY);
+
+                if (savedCurrency) {
+                    currencySymbol = savedCurrency;
+                    document.getElementById('currencySelector').value = currencySymbol;
+                    document.getElementById('formCurrencySymbol').textContent = currencySymbol;
+                }
+
+                if (savedData) {
+                    transactions = JSON.parse(savedData);
+                } else {
+                    // Seed initial sample data on first-ever visit so dashboard looks alive
+                    transactions = generateSampleTransactions();
+                    saveToLocalStorage();
+                }
+            } catch (error) {
+                console.error('Error reading from localStorage:', error);
+                transactions = [];
+            }
+        }
+
+        function saveToLocalStorage() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(transactions));
+            } catch (error) {
+                console.error('Error saving to localStorage:', error);
+                showToast('Could not save data to browser storage.', 'error');
+            }
+        }
+
+        /**
+         * Formats a number into clean currency string (e.g., ₹1,250.00)
+         */
+        function formatMoney(amount) {
+            const num = Number(amount) || 0;
+            const locale = currencySymbol === '₹' ? 'en-IN' : 'en-US';
+            return `${currencySymbol}${num.toLocaleString(locale, {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            })}`;
+        }
+
+        // --- 3. EVENT LISTENERS ---
+        function setupEventListeners() {
+            // Currency Switcher
+            document.getElementById('currencySelector').addEventListener('change', (e) => {
+                currencySymbol = e.target.value;
+                localStorage.setItem(CURRENCY_KEY, currencySymbol);
+                document.getElementById('formCurrencySymbol').textContent = currencySymbol;
+                refreshDashboard();
+                showToast(`Currency updated to ${currencySymbol}`, 'info');
+            });
+
+            // Radio buttons for Expense vs Income
+            document.querySelectorAll('input[name="txType"]').forEach(radio => {
+                radio.addEventListener('change', (e) => {
+                    syncCategoryDropdown(e.target.value);
+                });
+            });
+
+            // Transaction Form Submit (Add or Update)
+            document.getElementById('transactionForm').addEventListener('submit', handleFormSubmit);
+
+            // Cancel Edit Mode
+            document.getElementById('cancelEditBtn').addEventListener('click', resetFormToAddMode);
+
+            // Timeframe Filter Tabs
+            document.querySelectorAll('.timeframe-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    activeTimeframe = btn.dataset.timeframe;
+                    // Update active tab styling
+                    document.querySelectorAll('.timeframe-btn').forEach(b => {
+                        b.classList.remove('bg-white', 'text-slate-900', 'shadow-2xs');
+                        b.classList.add('text-slate-600');
+                    });
+                    btn.classList.add('bg-white', 'text-slate-900', 'shadow-2xs');
+                    btn.classList.remove('text-slate-600');
+                    renderTransactionTable();
+                });
+            });
+
+            // Category & Search Filters
+            document.getElementById('filterCategory').addEventListener('change', renderTransactionTable);
+            document.getElementById('searchInput').addEventListener('input', renderTransactionTable);
+
+            // AI Coach Manual Refresh Button
+            document.getElementById('refreshAiBtn').addEventListener('click', () => {
+                renderAIInsights(true);
+            });
+
+            // Load Sample Data Button
+            document.getElementById('loadSampleBtn').addEventListener('click', () => {
+                openConfirmModal(
+                    'Load Sample Demo Data?',
+                    'This will replace your current list with realistic sample income and expense entries so you can explore charts and AI insights.',
+                    () => {
+                        transactions = generateSampleTransactions();
+                        saveToLocalStorage();
+                        resetFormToAddMode();
+                        refreshDashboard();
+                        showToast('Sample financial data loaded!', 'success');
+                    }
+                );
+            });
+
+            // Clear All Data Button
+            document.getElementById('clearAllBtn').addEventListener('click', () => {
+                if (transactions.length === 0) {
+                    showToast('Your tracker is already empty.', 'info');
+                    return;
+                }
+                openConfirmModal(
+                    'Clear All Transactions?',
+                    'Are you sure you want to permanently delete all recorded income and expense entries?',
+                    () => {
+                        transactions = [];
+                        saveToLocalStorage();
+                        resetFormToAddMode();
+                        refreshDashboard();
+                        showToast('All transactions cleared.', 'info');
+                    }
+                );
+            });
+        }
+
+        /**
+         * Updates the Category <select> options depending on whether user chose Expense or Income
+         */
+        function syncCategoryDropdown(type, selectedCategory = null) {
+            const select = document.getElementById('txCategory');
+            select.innerHTML = '';
+
+            const source = type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+            Object.keys(source).forEach(cat => {
+                const option = document.createElement('option');
+                option.value = cat;
+                option.textContent = cat;
+                if (selectedCategory === cat) {
+                    option.selected = true;
+                }
+                select.appendChild(option);
+            });
+        }
+
+        // --- 4. CRUD OPERATIONS ---
+        function handleFormSubmit(e) {
+            e.preventDefault();
+
+            const editId = document.getElementById('editTransactionId').value;
+            const type = document.querySelector('input[name="txType"]:checked').value;
+            const title = document.getElementById('txTitle').value.trim();
+            const amount = parseFloat(document.getElementById('txAmount').value);
+            const date = document.getElementById('txDate').value;
+            const category = document.getElementById('txCategory').value;
+
+            if (!title || isNaN(amount) || amount <= 0 || !date) {
+                showToast('Please enter a valid title, positive amount, and date.', 'error');
+                return;
+            }
+
+            if (editId) {
+                // Update existing transaction
+                const index = transactions.findIndex(t => t.id === editId);
+                if (index !== -1) {
+                    transactions[index] = {
+                        ...transactions[index],
+                        type,
+                        title,
+                        amount,
+                        date,
+                        category
+                    };
+                    showToast('Transaction updated successfully!', 'success');
+                }
+                resetFormToAddMode();
+            } else {
+                // Create new transaction
+                const newTx = {
+                    id: 'tx_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+                    type,
+                    title,
+                    amount,
+                    date,
+                    category,
+                    createdAt: Date.now()
+                };
+                transactions.unshift(newTx);
+                showToast(`${type === 'income' ? 'Income' : 'Expense'} added!`, 'success');
+                
+                // Reset inputs while keeping date handy
+                document.getElementById('txTitle').value = '';
+                document.getElementById('txAmount').value = '';
+            }
+
+            saveToLocalStorage();
+            refreshDashboard();
+        }
+
+        /**
+         * Populates the form with an existing transaction's details for editing
+         */
+        window.editTransaction = function(id) {
+            const tx = transactions.find(t => t.id === id);
+            if (!tx) return;
+
+            document.getElementById('editTransactionId').value = tx.id;
+            
+            // Set radio type
+            const radio = document.querySelector(`input[name="txType"][value="${tx.type}"]`);
+            if (radio) radio.checked = true;
+
+            syncCategoryDropdown(tx.type, tx.category);
+
+            document.getElementById('txTitle').value = tx.title;
+            document.getElementById('txAmount').value = tx.amount;
+            document.getElementById('txDate').value = tx.date;
+
+            // Update form UI to "Edit Mode"
+            document.getElementById('formHeading').innerHTML = `
+                <i class="fa-solid fa-pen-to-square text-amber-500"></i>
+                <span>Edit Transaction</span>
+            `;
+            document.getElementById('submitBtnText').textContent = 'Update Transaction';
+            document.getElementById('submitTxBtn').classList.remove('bg-indigo-600', 'hover:bg-indigo-700');
+            document.getElementById('submitTxBtn').classList.add('bg-amber-600', 'hover:bg-amber-700');
+            document.getElementById('cancelEditBtn').classList.remove('hidden');
+
+            // Smooth scroll to form on mobile/tablet
+            document.getElementById('transactionForm').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        };
+
+        function resetFormToAddMode() {
+            document.getElementById('editTransactionId').value = '';
+            document.getElementById('transactionForm').reset();
+            setDefaultDateToToday();
+            syncCategoryDropdown('expense');
+
+            document.getElementById('formHeading').innerHTML = `
+                <i class="fa-solid fa-circle-plus text-indigo-600"></i>
+                <span>Add Transaction</span>
+            `;
+            document.getElementById('submitBtnText').textContent = 'Save Transaction';
+            document.getElementById('submitTxBtn').classList.add('bg-indigo-600', 'hover:bg-indigo-700');
+            document.getElementById('submitTxBtn').classList.remove('bg-amber-600', 'hover:bg-amber-700');
+            document.getElementById('cancelEditBtn').classList.add('hidden');
+        }
+
+        /**
+         * Deletes a transaction after confirmation
+         */
+        window.deleteTransaction = function(id) {
+            const tx = transactions.find(t => t.id === id);
+            if (!tx) return;
+
+            openConfirmModal(
+                'Delete Transaction?',
+                `Remove "${tx.title}" (${formatMoney(tx.amount)}) from your records?`,
+                () => {
+                    transactions = transactions.filter(t => t.id !== id);
+                    // If currently editing this item, reset form
+                    if (document.getElementById('editTransactionId').value === id) {
+                        resetFormToAddMode();
+                    }
+                    saveToLocalStorage();
+                    refreshDashboard();
+                    showToast('Transaction deleted.', 'info');
+                }
+            );
+        };
+
+        // --- 5. DASHBOARD METRICS & RENDERING ---
+        function refreshDashboard() {
+            // Sort transactions chronologically (newest first)
+            transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            updateSummaryCards();
+            renderCategoryBars();
+            renderCharts();
+            renderTransactionTable();
+            renderAIInsights(false);
+        }
+
+        /**
+         * Calculates and displays Total Balance, Income, Expenses, Today's Spend, and Monthly Spend
+         */
+        function updateSummaryCards() {
+            const todayStr = getTodayISO();
+            const currentMonthPrefix = todayStr.slice(0, 7); // YYYY-MM
+
+            let totalIncome = 0;
+            let totalExpenses = 0;
+            let incomeCount = 0;
+            let expenseCount = 0;
+            let todayExpense = 0;
+            let monthlyExpense = 0;
+
+            transactions.forEach(tx => {
+                const amt = Number(tx.amount);
+                if (tx.type === 'income') {
+                    totalIncome += amt;
+                    incomeCount++;
+                } else {
+                    totalExpenses += amt;
+                    expenseCount++;
+
+                    if (tx.date === todayStr) {
+                        todayExpense += amt;
+                    }
+                    if (tx.date.startsWith(currentMonthPrefix)) {
+                        monthlyExpense += amt;
+                    }
+                }
+            });
+
+            const balance = totalIncome - totalExpenses;
+
+            // Update DOM values
+            const balanceEl = document.getElementById('totalBalance');
+            balanceEl.textContent = formatMoney(balance);
+            balanceEl.className = `text-2xl sm:text-3xl font-bold tracking-tight ${
+                balance < 0 ? 'text-rose-600' : 'text-slate-900'
+            }`;
+
+            document.getElementById('totalIncome').textContent = formatMoney(totalIncome);
+            document.getElementById('incomeCountText').textContent = `${incomeCount} income ${incomeCount === 1 ? 'entry' : 'entries'} recorded`;
+
+            document.getElementById('totalExpenses').textContent = formatMoney(totalExpenses);
+            document.getElementById('expenseCountText').textContent = `${expenseCount} expense ${expenseCount === 1 ? 'entry' : 'entries'} recorded`;
+
+            // Savings Rate Badge
+            const savingsBadge = document.getElementById('savingsRateBadge');
+            if (totalIncome > 0) {
+                const savingsRate = ((balance / totalIncome) * 100).toFixed(1);
+                const isPositive = balance >= 0;
+                savingsBadge.innerHTML = `
+                    <span class="inline-block w-2 h-2 rounded-full ${isPositive ? 'bg-emerald-500' : 'bg-rose-500'}"></span>
+                    <span class="${isPositive ? 'text-emerald-700 font-medium' : 'text-rose-600 font-medium'}">
+                        ${isPositive ? `${savingsRate}% savings rate` : 'Expenses exceed income'}
+                    </span>
+                `;
+            } else {
+                savingsBadge.innerHTML = `
+                    <span class="inline-block w-2 h-2 rounded-full bg-indigo-500"></span>
+                    <span>Add income to track savings rate</span>
+                `;
+            }
+
+            // Daily & Monthly Summary Card
+            const monthName = new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+            document.getElementById('currentMonthLabel').textContent = monthName;
+            document.getElementById('todayExpenseSummary').textContent = formatMoney(todayExpense);
+            document.getElementById('monthlyExpenseSummary').textContent = formatMoney(monthlyExpense);
+
+            const dayOfMonth = new Date().getDate();
+            const dailyAvg = monthlyExpense / Math.max(1, dayOfMonth);
+            document.getElementById('dailyAvgText').textContent = `Daily avg in ${monthName}: ${formatMoney(dailyAvg)}`;
+        }
+
+        /**
+         * Renders mini progress cards for each of the 5 expense categories
+         */
+        function renderCategoryBars() {
+            const container = document.getElementById('categoryBarsContainer');
+            const topBadge = document.getElementById('topCategoryBadge');
+            container.innerHTML = '';
+
+            const totals = { Food: 0, Travel: 0, Shopping: 0, Bills: 0, Others: 0 };
+            let grandTotalExpense = 0;
+
+            transactions.forEach(tx => {
+                if (tx.type === 'expense') {
+                    const cat = totals.hasOwnProperty(tx.category) ? tx.category : 'Others';
+                    totals[cat] += Number(tx.amount);
+                    grandTotalExpense += Number(tx.amount);
+                }
+            });
+
+            // Determine highest spending category
+            let topCat = null;
+            let topVal = 0;
+            Object.entries(totals).forEach(([cat, val]) => {
+                if (val > topVal) {
+                    topVal = val;
+                    topCat = cat;
+                }
+            });
+
+            if (topCat && grandTotalExpense > 0) {
+                const pct = Math.round((topVal / grandTotalExpense) * 100);
+                topBadge.textContent = `Highest: ${topCat} (${pct}%)`;
+                topBadge.className = 'text-xs font-semibold px-2.5 py-1 rounded-full bg-rose-50 text-rose-700 border border-rose-100 self-start sm:self-auto';
+            } else {
+                topBadge.textContent = 'No expenses recorded';
+                topBadge.className = 'text-xs font-medium px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 self-start sm:self-auto';
+            }
+
+            Object.entries(EXPENSE_CATEGORIES).forEach(([cat, meta]) => {
+                const spent = totals[cat] || 0;
+                const percent = grandTotalExpense > 0 ? Math.round((spent / grandTotalExpense) * 100) : 0;
+
+                const card = document.createElement('div');
+                card.className = 'p-3.5 rounded-xl border border-slate-100 bg-slate-50/70 hover:bg-slate-50 transition';
+                card.innerHTML = `
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center gap-2">
+                            <span class="w-7 h-7 rounded-lg ${meta.bg} ${meta.text} flex items-center justify-center text-xs">
+                                <i class="fa-solid ${meta.icon}"></i>
+                            </span>
+                            <span class="text-xs font-semibold text-slate-800">${cat}</span>
+                        </div>
+                        <span class="text-xs font-bold text-slate-500">${percent}%</span>
+                    </div>
+                    <div class="text-sm font-bold text-slate-900 mb-2">${formatMoney(spent)}</div>
+                    <div class="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                        <div class="h-full rounded-full transition-all duration-500" style="width: ${percent}%; background-color: ${meta.color};"></div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // --- 6. CHARTS (CHART.JS) ---
+        function renderCharts() {
+            renderCategoryDoughnutChart();
+            renderDailyTrendBarChart();
+        }
+
+        function renderCategoryDoughnutChart() {
+            const ctx = document.getElementById('categoryChart').getContext('2d');
+            const emptyMsg = document.getElementById('emptyCategoryChartMsg');
+
+            const totals = { Food: 0, Travel: 0, Shopping: 0, Bills: 0, Others: 0 };
+            let hasExpense = false;
+
+            transactions.forEach(tx => {
+                if (tx.type === 'expense') {
+                    const cat = totals.hasOwnProperty(tx.category) ? tx.category : 'Others';
+                    totals[cat] += Number(tx.amount);
+                    hasExpense = true;
+                }
+            });
+
+            if (categoryChartInstance) {
+                categoryChartInstance.destroy();
+            }
+
+            if (!hasExpense) {
+                emptyMsg.classList.remove('hidden');
+                return;
+            }
+            emptyMsg.classList.add('hidden');
+
+            const labels = Object.keys(totals);
+            const dataValues = Object.values(totals);
+            const bgColors = labels.map(cat => EXPENSE_CATEGORIES[cat].color);
+
+            categoryChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels,
+                    datasets: [{
+                        data: dataValues,
+                        backgroundColor: bgColors,
+                        borderWidth: 2,
+                        borderColor: '#ffffff',
+                        hoverOffset: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '66%',
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                usePointStyle: true,
+                                pointStyle: 'circle',
+                                padding: 14,
+                                font: { family: 'Inter', size: 11, weight: '500' },
+                                color: '#475569'
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: '#0f172a',
+                            padding: 10,
+                            cornerRadius: 8,
+                            callbacks: {
+                                label: function(context) {
+                                    const val = context.raw || 0;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const pct = total > 0 ? Math.round((val / total) * 100) : 0;
+                                    return ` ${context.label}: ${formatMoney(val)} (${pct}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderDailyTrendBarChart() {
+            const ctx = document.getElementById('trendChart').getContext('2d');
+            const emptyMsg = document.getElementById('emptyTrendChartMsg');
+
+            if (trendChartInstance) {
+                trendChartInstance.destroy();
+            }
+
+            if (transactions.length === 0) {
+                emptyMsg.classList.remove('hidden');
+                return;
+            }
+            emptyMsg.classList.add('hidden');
+
+            // Group income and expenses by date for the last 7 unique dates with activity
+            const dateMap = {};
+            transactions.forEach(tx => {
+                if (!dateMap[tx.date]) {
+                    dateMap[tx.date] = { income: 0, expense: 0 };
+                }
+                if (tx.type === 'income') {
+                    dateMap[tx.date].income += Number(tx.amount);
+                } else {
+                    dateMap[tx.date].expense += Number(tx.amount);
+                }
+            });
+
+            // Sort dates ascending and take last 7 active days
+            const sortedDates = Object.keys(dateMap).sort().slice(-7);
+            const labels = sortedDates.map(d => {
+                const dateObj = new Date(d + 'T00:00:00');
+                return dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            });
+            const incomeSeries = sortedDates.map(d => dateMap[d].income);
+            const expenseSeries = sortedDates.map(d => dateMap[d].expense);
+
+            trendChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels,
+                    datasets: [
+                        {
+                            label: 'Income',
+                            data: incomeSeries,
+                            backgroundColor: '#10b981',
+                            borderRadius: 6,
+                            maxBarThickness: 22
+                        },
+                        {
+                            label: 'Expenses',
+                            data: expenseSeries,
+                            backgroundColor: '#f43f5e',
+                            borderRadius: 6,
+                            maxBarThickness: 22
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            grid: { display: false },
+                            ticks: { font: { family: 'Inter', size: 11 }, color: '#64748b' }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            border: { display: false },
+                            grid: { color: '#f1f5f9' },
+                            ticks: {
+                                font: { family: 'Inter', size: 11 },
+                                color: '#64748b',
+                                callback: (val) => `${currencySymbol}${val}`
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            align: 'end',
+                            labels: {
+                                usePointStyle: true,
+                                pointStyle: 'circle',
+                                boxWidth: 8,
+                                font: { family: 'Inter', size: 11, weight: '500' },
+                                color: '#475569'
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: '#0f172a',
+                            padding: 10,
+                            cornerRadius: 8,
+                            callbacks: {
+                                label: (ctx) => ` ${ctx.dataset.label}: ${formatMoney(ctx.raw)}`
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // --- 7. TRANSACTION TABLE & FILTERS ---
+        function renderTransactionTable() {
+            const tbody = document.getElementById('transactionTableBody');
+            const emptyState = document.getElementById('emptyTransactionsState');
+            const catFilter = document.getElementById('filterCategory').value;
+            const searchQuery = document.getElementById('searchInput').value.trim().toLowerCase();
+
+            const todayStr = getTodayISO();
+            const currentMonthPrefix = todayStr.slice(0, 7);
+
+            const filtered = transactions.filter(tx => {
+                // Timeframe check
+                if (activeTimeframe === 'today' && tx.date !== todayStr) return false;
+                if (activeTimeframe === 'month' && !tx.date.startsWith(currentMonthPrefix)) return false;
+
+                // Category check
+                if (catFilter !== 'all' && tx.category !== catFilter) return false;
+
+                // Search text check
+                if (searchQuery && !tx.title.toLowerCase().includes(searchQuery) && !tx.category.toLowerCase().includes(searchQuery)) {
+                    return false;
+                }
+
+                return true;
+            });
+
+            // Update filtered stats strip
+            let fIncome = 0;
+            let fExpense = 0;
+            filtered.forEach(tx => {
+                if (tx.type === 'income') fIncome += Number(tx.amount);
+                else fExpense += Number(tx.amount);
+            });
+
+            document.getElementById('filteredCountLabel').textContent = `Showing ${filtered.length} ${filtered.length === 1 ? 'transaction' : 'transactions'}`;
+            document.getElementById('filteredIncomeTotal').textContent = formatMoney(fIncome);
+            document.getElementById('filteredExpenseTotal').textContent = formatMoney(fExpense);
+
+            tbody.innerHTML = '';
+
+            if (filtered.length === 0) {
+                emptyState.classList.remove('hidden');
+                return;
+            }
+            emptyState.classList.add('hidden');
+
+            filtered.forEach(tx => {
+                const isIncome = tx.type === 'income';
+                const catMeta = isIncome
+                    ? (INCOME_CATEGORIES[tx.category] || INCOME_CATEGORIES.Others)
+                    : (EXPENSE_CATEGORIES[tx.category] || EXPENSE_CATEGORIES.Others);
+
+                const formattedDate = new Date(tx.date + 'T00:00:00').toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric'
+                });
+
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-slate-50/90 transition group';
+                row.innerHTML = `
+                    <td class="py-3.5 px-3 whitespace-nowrap text-xs text-slate-500 font-medium">
+                        ${formattedDate}
+                        ${tx.date === todayStr ? '<span class="ml-1.5 px-1.5 py-0.5 text-[10px] font-semibold bg-indigo-50 text-indigo-600 rounded">Today</span>' : ''}
+                    </td>
+                    <td class="py-3.5 px-3 font-medium text-slate-900">
+                        ${escapeHtml(tx.title)}
+                    </td>
+                    <td class="py-3.5 px-3 whitespace-nowrap">
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium ${catMeta.bg} ${catMeta.text} border ${catMeta.border}">
+                            <i class="fa-solid ${catMeta.icon} text-[11px]"></i>
+                            ${escapeHtml(tx.category)}
+                        </span>
+                    </td>
+                    <td class="py-3.5 px-3 whitespace-nowrap text-right font-bold ${isIncome ? 'text-emerald-600' : 'text-rose-600'}">
+                        ${isIncome ? '+' : '-'}${formatMoney(tx.amount)}
+                    </td>
+                    <td class="py-3.5 px-3 whitespace-nowrap text-right">
+                        <div class="inline-flex items-center gap-1">
+                            <button type="button" onclick="editTransaction('${tx.id}')"
+                                class="p-2 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition cursor-pointer"
+                                title="Edit transaction" aria-label="Edit ${escapeHtml(tx.title)}">
+                                <i class="fa-solid fa-pen text-xs"></i>
+                            </button>
+                            <button type="button" onclick="deleteTransaction('${tx.id}')"
+                                class="p-2 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                                title="Delete transaction" aria-label="Delete ${escapeHtml(tx.title)}">
+                                <i class="fa-solid fa-trash text-xs"></i>
+                            </button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // --- 8. AI FINANCIAL COACH ENGINE ---
+        /**
+         * Analyzes the user's real transaction data and generates 3 tailored insights:
+         * 1. Cashflow & Savings Health Diagnosis
+         * 2. Top Spending Category Alert & Optimization
+         * 3. Actionable Smart Money-Saving Tip
+         */
+        function renderAIInsights(withAnimation = false) {
+            const container = document.getElementById('aiInsightsContainer');
+
+            if (withAnimation) {
+                container.innerHTML = `
+                    <div class="col-span-full py-6 flex items-center justify-center gap-3 text-indigo-700 text-sm font-medium">
+                        <i class="fa-solid fa-circle-notch fa-spin text-lg"></i>
+                        <span>AI Coach is analyzing your spending habits and cashflow ratios...</span>
+                    </div>
+                `;
+                setTimeout(() => generateAndDisplayInsights(container), 450);
+            } else {
+                generateAndDisplayInsights(container);
+            }
+        }
+
+        function generateAndDisplayInsights(container) {
+            const insights = [];
+
+            if (transactions.length === 0) {
+                insights.push(
+                    {
+                        icon: 'fa-seedling',
+                        badge: 'Getting Started',
+                        badgeClass: 'bg-indigo-100 text-indigo-700',
+                        title: 'Start Logging Daily Expenses',
+                        body: 'Record your daily meals, commute, and bills. Even tracking small purchases can uncover 15–20% in hidden monthly savings.'
+                    },
+                    {
+                        icon: 'fa-bullseye',
+                        badge: '50/30/20 Rule',
+                        badgeClass: 'bg-emerald-100 text-emerald-700',
+                        title: 'Smart Budget Benchmark',
+                        body: 'Aim to allocate 50% of income to essential Bills & Food, 30% to lifestyle & Shopping, and save at least 20% automatically.'
+                    },
+                    {
+                        icon: 'fa-wand-magic-sparkles',
+                        badge: 'AI Tip',
+                        badgeClass: 'bg-violet-100 text-violet-700',
+                        title: 'Try Instant Demo Mode',
+                        body: 'Click "Sample Data" in the top right to see how the AI Coach detects overspending spikes and generates custom saving goals.'
+                    }
+                );
+            } else {
+                // Compute analytical metrics
+                let totalIncome = 0;
+                let totalExpenses = 0;
+                const catTotals = { Food: 0, Travel: 0, Shopping: 0, Bills: 0, Others: 0 };
+
+                transactions.forEach(tx => {
+                    const amt = Number(tx.amount);
+                    if (tx.type === 'income') {
+                        totalIncome += amt;
+                    } else {
+                        totalExpenses += amt;
+                        const cat = catTotals.hasOwnProperty(tx.category) ? tx.category : 'Others';
+                        catTotals[cat] += amt;
+                    }
+                });
+
+                // Insight 1: Savings Rate & Cashflow Health
+                if (totalIncome === 0 && totalExpenses > 0) {
+                    insights.push({
+                        icon: 'fa-circle-exclamation',
+                        badge: 'Income Missing',
+                        badgeClass: 'bg-amber-100 text-amber-800',
+                        title: 'Log Your Income Sources',
+                        body: `You've logged ${formatMoney(totalExpenses)} in expenses but no income yet. Add your salary or allowance so AI can compute your savings ratio.`
+                    });
+                } else {
+                    const balance = totalIncome - totalExpenses;
+                    const savingsRate = totalIncome > 0 ? ((balance / totalIncome) * 100) : 0;
+
+                    if (savingsRate >= 25) {
+                        insights.push({
+                            icon: 'fa-award',
+                            badge: 'Healthy Cashflow',
+                            badgeClass: 'bg-emerald-100 text-emerald-700',
+                            title: `Strong ${savingsRate.toFixed(0)}% Savings Rate!`,
+                            body: `Great discipline! You have ${formatMoney(balance)} remaining. Consider moving ${formatMoney(balance * 0.5)} into an emergency fund or SIP.`
+                        });
+                    } else if (savingsRate > 0) {
+                        insights.push({
+                            icon: 'fa-chart-line',
+                            badge: 'Moderate Buffer',
+                            badgeClass: 'bg-sky-100 text-sky-700',
+                            title: `${savingsRate.toFixed(0)}% Savings Rate Detected`,
+                            body: `You're in the green by ${formatMoney(balance)}, slightly below the 20% target. Trimming non-essential spending by ${formatMoney(totalExpenses * 0.1)} will boost your buffer.`
+                        });
+                    } else {
+                        insights.push({
+                            icon: 'fa-triangle-exclamation',
+                            badge: 'Deficit Alert',
+                            badgeClass: 'bg-rose-100 text-rose-700',
+                            title: 'Expenses Exceed Income',
+                            body: `Your spending is ${formatMoney(Math.abs(balance))} higher than your income. Pause discretionary Shopping & dining out for the next 7 days.`
+                        });
+                    }
+                }
+
+                // Insight 2: Highest Spending Category Diagnosis
+                const sortedCats = Object.entries(catTotals).sort((a, b) => b[1] - a[1]);
+                const [topCat, topAmount] = sortedCats[0];
+
+                if (topAmount > 0 && totalExpenses > 0) {
+                    const share = Math.round((topAmount / totalExpenses) * 100);
+                    const categoryAdvice = {
+                        Food: `Food accounts for ${share}% (${formatMoney(topAmount)}) of your spending. Meal-prepping 3 weekdays could save ~${formatMoney(topAmount * 0.25)}/month.`,
+                        Shopping: `Shopping is your #1 expense at ${share}% (${formatMoney(topAmount)}). Try the 48-hour wishlist rule before impulse purchases to cut ~${formatMoney(topAmount * 0.3)}.`,
+                        Travel: `Travel takes ${share}% (${formatMoney(topAmount)}) of your budget. Using transit passes or carpooling could save around ${formatMoney(topAmount * 0.2)}.`,
+                        Bills: `Fixed Bills represent ${share}% (${formatMoney(topAmount)}) of expenses. Audit recurring subscriptions to eliminate unused monthly charges.`,
+                        Others: `Miscellaneous items make up ${share}% (${formatMoney(topAmount)}). Tagging smaller purchases clearly helps spot unnoticed leaks.`
+                    };
+
+                    insights.push({
+                        icon: 'fa-magnifying-glass-chart',
+                        badge: `Top Spend: ${topCat}`,
+                        badgeClass: 'bg-indigo-100 text-indigo-700',
+                        title: `${topCat} Leads at ${share}% of Spend`,
+                        body: categoryAdvice[topCat]
+                    });
+                } else {
+                    insights.push({
+                        icon: 'fa-receipt',
+                        badge: 'Expense Tracking',
+                        badgeClass: 'bg-indigo-100 text-indigo-700',
+                        title: 'Zero Expenses Recorded',
+                        body: 'Your expense ledger is clean! Log daily purchases as they happen to get category-specific optimization advice.'
+                    });
+                }
+
+                // Insight 3: Actionable Micro-Saving Challenge
+                const todayStr = getTodayISO();
+                const todaySpend = transactions
+                    .filter(t => t.type === 'expense' && t.date === todayStr)
+                    .reduce((sum, t) => sum + Number(t.amount), 0);
+
+                if (todaySpend > 0) {
+                    const projectedMonthly = todaySpend * 30;
+                    insights.push({
+                        icon: 'fa-bolt',
+                        badge: 'Daily Pace Forecast',
+                        badgeClass: 'bg-violet-100 text-violet-700',
+                        title: `Today's Spend: ${formatMoney(todaySpend)}`,
+                        body: `At today's spending pace, your 30-day outflow would reach ${formatMoney(projectedMonthly)}. Try setting a strict "No-Spend Day" tomorrow to balance it out!`
+                    });
+                } else {
+                    const potentialMonthlySave = Math.max(50, totalExpenses * 0.15);
+                    insights.push({
+                        icon: 'fa-piggy-bank',
+                        badge: 'Smart Saving Goal',
+                        badgeClass: 'bg-violet-100 text-violet-700',
+                        title: `Save ${formatMoney(potentialMonthlySave)} This Month`,
+                        body: `Zero expenses logged today—awesome start! Keep today spend-free and cap discretionary categories by 15% to pocket ${formatMoney(potentialMonthlySave)}.`
+                    });
+                }
+            }
+
+            container.innerHTML = insights.map(item => `
+                <div class="bg-white/95 backdrop-blur-xs rounded-xl p-4 border border-indigo-100/80 shadow-2xs flex flex-col justify-between animate-fade-in">
+                    <div>
+                        <div class="flex items-center justify-between gap-2 mb-2.5">
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${item.badgeClass}">
+                                <i class="fa-solid ${item.icon}"></i>
+                                ${item.badge}
+                            </span>
+                        </div>
+                        <h3 class="text-sm font-bold text-slate-900 mb-1">${item.title}</h3>
+                        <p class="text-xs text-slate-600 leading-relaxed">${item.body}</p>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // --- 9. SAMPLE DATA GENERATOR (FOR DEMO & BEGINNER TESTING) ---
+        function generateSampleTransactions() {
+            const today = new Date();
+            const formatOffsetDate = (daysAgo) => {
+                const d = new Date(today);
+                d.setDate(d.getDate() - daysAgo);
+                const offset = d.getTimezoneOffset();
+                return new Date(d.getTime() - offset * 60000).toISOString().split('T')[0];
+            };
+
+            return [
+                { id: 'demo_1', type: 'income',  title: 'Monthly Salary Credit',    amount: 45000, date: formatOffsetDate(6), category: 'Salary' },
+                { id: 'demo_2', type: 'expense', title: 'Electricity & Wi-Fi Bill', amount: 3200,  date: formatOffsetDate(5), category: 'Bills' },
+                { id: 'demo_3', type: 'expense', title: 'Fresh Groceries & Fruits', amount: 1850,  date: formatOffsetDate(4), category: 'Food' },
+                { id: 'demo_4', type: 'expense', title: 'Metro Smart Card Recharge',amount: 600,   date: formatOffsetDate(3), category: 'Travel' },
+                { id: 'demo_5', type: 'income',  title: 'UI Design Freelance Gig',  amount: 8500,  date: formatOffsetDate(2), category: 'Freelance' },
+                { id: 'demo_6', type: 'expense', title: 'Running Shoes & Apparel',  amount: 3400,  date: formatOffsetDate(2), category: 'Shopping' },
+                { id: 'demo_7', type: 'expense', title: 'Coffee & Lunch with Team', amount: 650,   date: formatOffsetDate(1), category: 'Food' },
+                { id: 'demo_8', type: 'expense', title: 'Cab Ride to Station',      amount: 320,   date: formatOffsetDate(0), category: 'Travel' },
+                { id: 'demo_9', type: 'expense', title: 'Healthy Dinner Bowl',      amount: 280,   date: formatOffsetDate(0), category: 'Food' }
+            ];
+        }
+
+        // --- 10. UI HELPERS: CUSTOM TOAST & CONFIRMATION MODAL ---
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+
+            const styles = {
+                success: 'bg-slate-900 text-white border-emerald-500',
+                error:   'bg-rose-600 text-white border-rose-400',
+                info:    'bg-slate-800 text-white border-indigo-400'
+            };
+
+            const icons = {
+                success: 'fa-circle-check text-emerald-400',
+                error:   'fa-circle-exclamation text-white',
+                info:    'fa-circle-info text-indigo-300'
+            };
+
+            toast.className = `pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg border-l-4 text-xs sm:text-sm font-medium animate-fade-in ${styles[type] || styles.info}`;
+            toast.innerHTML = `
+                <i class="fa-solid ${icons[type] || icons.info} text-base"></i>
+                <span class="flex-1">${escapeHtml(message)}</span>
+            `;
+
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(6px)';
+                toast.style.transition = 'all 0.25s ease';
+                setTimeout(() => toast.remove(), 250);
+            }, 3000);
+        }
+
+        let pendingConfirmCallback = null;
+
+        function openConfirmModal(title, message, onConfirm) {
+            const modal = document.getElementById('confirmModal');
+            document.getElementById('confirmModalTitle').textContent = title;
+            document.getElementById('confirmModalMessage').textContent = message;
+            pendingConfirmCallback = onConfirm;
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeConfirmModal() {
+            const modal = document.getElementById('confirmModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            pendingConfirmCallback = null;
+        }
+
+        document.getElementById('confirmCancelBtn').addEventListener('click', closeConfirmModal);
+        document.getElementById('confirmProceedBtn').addEventListener('click', () => {
+            if (typeof pendingConfirmCallback === 'function') {
+                pendingConfirmCallback();
+            }
+            closeConfirmModal();
+        });
+
+        // Close modal on backdrop click
+        document.getElementById('confirmModal').addEventListener('click', (e) => {
+            if (e.target.id === 'confirmModal') closeConfirmModal();
+        });
+
+        /**
+         * Escapes user-provided strings to prevent XSS
+         */
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>
